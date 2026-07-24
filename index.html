@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Haiku Ichi Tasu — Poem Generator</title>
+<style>
+  :root {
+    --bg: #f4efe6;
+    --ink: #2b2520;
+    --muted: #7c7166;
+    --accent: #9a5b3f;
+    --accent-2: #38614f;
+    --paper: #fbf8f2;
+    --line: #e3d9c8;
+    --shadow: rgba(60, 45, 30, 0.12);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1b1814;
+      --ink: #ece3d5;
+      --muted: #a89a88;
+      --accent: #d08a6a;
+      --accent-2: #7fb79a;
+      --paper: #241f1a;
+      --line: #3a332b;
+      --shadow: rgba(0, 0, 0, 0.4);
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, "Georgia", serif;
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.5;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 2rem 1rem 4rem;
+  }
+  .wrap { width: 100%; max-width: 720px; }
+  header { text-align: center; margin-bottom: 1.75rem; }
+  h1 {
+    font-size: clamp(1.8rem, 5vw, 2.6rem);
+    margin: 0 0 0.25rem;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+  }
+  .subtitle { color: var(--muted); font-style: italic; margin: 0; font-size: 0.98rem; }
+  .subtitle b { color: var(--accent-2); font-style: normal; }
+
+  .panel {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 1.4rem 1.4rem 1.5rem;
+    box-shadow: 0 8px 24px var(--shadow);
+  }
+  .field { margin-bottom: 1.1rem; }
+  label { display: block; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted); margin-bottom: 0.4rem; }
+  input[type="text"], input[type="number"] {
+    width: 100%;
+    font-family: inherit;
+    font-size: 1.05rem;
+    padding: 0.7rem 0.85rem;
+    color: var(--ink);
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(154, 91, 63, 0.18); }
+
+  .row { display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end; }
+  .row .field { flex: 1 1 140px; margin-bottom: 0; }
+
+  /* toggle */
+  .toggle-field { display: flex; align-items: center; gap: 0.7rem; }
+  .toggle {
+    position: relative; width: 52px; height: 30px; flex: none;
+    background: var(--line); border-radius: 999px; cursor: pointer;
+    transition: background 0.2s; border: none; padding: 0;
+  }
+  .toggle::after {
+    content: ""; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px;
+    background: var(--paper); border-radius: 50%; transition: transform 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+  }
+  .toggle[aria-pressed="true"] { background: var(--accent-2); }
+  .toggle[aria-pressed="true"]::after { transform: translateX(22px); }
+  .toggle-label { font-size: 0.95rem; }
+  .toggle-label small { display: block; color: var(--muted); font-size: 0.8rem; }
+
+  .actions { margin-top: 1.4rem; display: flex; gap: 0.8rem; flex-wrap: wrap; }
+  button.primary {
+    font-family: inherit; font-size: 1.02rem; font-weight: 600;
+    background: var(--accent); color: #fff; border: none;
+    padding: 0.75rem 1.5rem; border-radius: 9px; cursor: pointer;
+    transition: transform 0.08s, filter 0.15s; flex: 1 1 auto;
+  }
+  button.primary:hover { filter: brightness(1.06); }
+  button.primary:active { transform: translateY(1px); }
+  button.primary:disabled { opacity: 0.6; cursor: default; filter: none; }
+  button.ghost {
+    font-family: inherit; font-size: 1.02rem;
+    background: transparent; color: var(--accent); border: 1px solid var(--line);
+    padding: 0.75rem 1.2rem; border-radius: 9px; cursor: pointer;
+  }
+  button.ghost:hover { border-color: var(--accent); }
+  button.ghost:disabled { opacity: 0.5; cursor: default; }
+
+  #output { margin-top: 2rem; }
+  .poem-title {
+    text-align: center; font-size: 1.35rem; margin: 0 0 0.3rem;
+    color: var(--accent); font-weight: 600;
+  }
+  .poem-meta { text-align: center; color: var(--muted); font-size: 0.85rem; margin-bottom: 1.6rem; font-style: italic; }
+  .triplet {
+    text-align: center; margin: 0 auto 1.6rem; padding-bottom: 1.1rem;
+    border-bottom: 1px solid var(--line); max-width: 30rem;
+    animation: rise 0.5s ease both;
+  }
+  .triplet:last-child { border-bottom: none; }
+  .triplet .line { font-size: 1.24rem; letter-spacing: 0.2px; }
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+  .empty { text-align: center; color: var(--muted); font-style: italic; padding: 2rem 0; }
+  .error { text-align: center; color: #b3402c; padding: 1.5rem 0; }
+  @media (prefers-color-scheme: dark) { .error { color: #e0876f; } }
+
+  /* loading spinner */
+  .loading { text-align: center; color: var(--muted); padding: 2.5rem 0; font-style: italic; }
+  .spinner {
+    display: inline-block; width: 22px; height: 22px; margin-bottom: 0.6rem;
+    border: 3px solid var(--line); border-top-color: var(--accent);
+    border-radius: 50%; animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  footer { text-align: center; color: var(--muted); font-size: 0.8rem; margin-top: 2.5rem; }
+  .pattern-key { font-variant-numeric: tabular-nums; color: var(--accent-2); font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Haiku Ichi Tasu</h1>
+    <p class="subtitle">“haiku and one” — a <b>6&middot;8&middot;6</b> syllable triplet, one syllable more per line than a haiku</p>
+  </header>
+
+  <div class="panel">
+    <div class="field">
+      <label for="theme">Theme</label>
+      <input type="text" id="theme" placeholder="e.g. the quiet sea, winter, love, midnight" value="the quiet sea" autocomplete="off" />
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label for="count">Number of triplets</label>
+        <input type="number" id="count" min="1" max="20" value="3" />
+      </div>
+      <div class="field toggle-field">
+        <button class="toggle" id="rhyme" aria-pressed="false" aria-label="Toggle rhyme"></button>
+        <span class="toggle-label">Rhyme<small>lines 1 &amp; 3 chime</small></span>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="primary" id="generate">Compose</button>
+      <button class="ghost" id="copy" disabled>Copy</button>
+    </div>
+  </div>
+
+  <div id="output">
+    <p class="empty">Enter a theme and press <b>Compose</b>.</p>
+  </div>
+
+  <footer>
+    Syllable pattern <span class="pattern-key">6&middot;8&middot;6</span> &middot; a coherent, single-theme sequence, written by Claude.
+  </footer>
+</div>
+
+<script>
+"use strict";
+
+const els = {
+  theme: document.getElementById("theme"),
+  count: document.getElementById("count"),
+  rhyme: document.getElementById("rhyme"),
+  generate: document.getElementById("generate"),
+  copy: document.getElementById("copy"),
+  output: document.getElementById("output"),
+};
+
+let lastPoem = null;
+
+els.rhyme.addEventListener("click", () => {
+  const on = els.rhyme.getAttribute("aria-pressed") === "true";
+  els.rhyme.setAttribute("aria-pressed", String(!on));
+});
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])
+  );
+}
+
+function setBusy(busy) {
+  els.generate.disabled = busy;
+  els.generate.textContent = busy ? "Composing…" : "Compose";
+}
+
+function renderLoading() {
+  els.output.innerHTML =
+    '<div class="loading"><div class="spinner"></div><div>Composing your poem…</div></div>';
+}
+
+function renderError(message) {
+  els.output.innerHTML = '<p class="error">' + escapeHtml(message) + "</p>";
+}
+
+function render(poem) {
+  const triplets = Array.isArray(poem.triplets) ? poem.triplets : [];
+  const parts = [];
+  if (poem.title) {
+    parts.push('<h2 class="poem-title">' + escapeHtml(poem.title) + "</h2>");
+  }
+  parts.push(
+    '<p class="poem-meta">' +
+      triplets.length +
+      " triplet" +
+      (triplets.length === 1 ? "" : "s") +
+      " &middot; 6&middot;8&middot;6 &middot; " +
+      (poem.rhyme ? "rhymed" : "unrhymed") +
+      "</p>"
+  );
+  for (const tri of triplets) {
+    const lines = (tri.lines || [])
+      .map((l) => '<div class="line">' + escapeHtml(l) + "</div>")
+      .join("");
+    parts.push('<div class="triplet">' + lines + "</div>");
+  }
+  els.output.innerHTML = parts.join("");
+  els.copy.disabled = false;
+}
+
+function poemToText(poem) {
+  const out = [];
+  if (poem.title) {
+    out.push(poem.title, "");
+  }
+  for (const tri of poem.triplets || []) {
+    for (const l of tri.lines || []) out.push(l);
+    out.push("");
+  }
+  return out.join("\n").trim() + "\n";
+}
+
+async function generate() {
+  const theme = els.theme.value.trim();
+  if (!theme) {
+    renderError("Please enter a theme.");
+    return;
+  }
+  let count = parseInt(els.count.value, 10);
+  if (isNaN(count) || count < 1) count = 1;
+  if (count > 20) count = 20;
+  els.count.value = count;
+  const rhyme = els.rhyme.getAttribute("aria-pressed") === "true";
+
+  lastPoem = null;
+  els.copy.disabled = true;
+  setBusy(true);
+  renderLoading();
+
+  try {
+    const resp = await fetch("/api/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ theme, count, rhyme }),
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      throw new Error(data.error || "Something went wrong (" + resp.status + ").");
+    }
+    lastPoem = data;
+    render(data);
+  } catch (err) {
+    renderError(err.message || "Failed to reach the server.");
+  } finally {
+    setBusy(false);
+  }
+}
+
+els.generate.addEventListener("click", generate);
+els.theme.addEventListener("keydown", (e) => { if (e.key === "Enter") generate(); });
+els.count.addEventListener("keydown", (e) => { if (e.key === "Enter") generate(); });
+
+els.copy.addEventListener("click", async () => {
+  if (!lastPoem) return;
+  try {
+    await navigator.clipboard.writeText(poemToText(lastPoem));
+    els.copy.textContent = "Copied!";
+    setTimeout(() => (els.copy.textContent = "Copy"), 1200);
+  } catch (e) {
+    els.copy.textContent = "Copy failed";
+    setTimeout(() => (els.copy.textContent = "Copy"), 1200);
+  }
+});
+</script>
+</body>
+</html>

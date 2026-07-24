@@ -1,0 +1,13 @@
+{
+  "name": "haiku-ichi-tasu",
+  "version": "1.0.0",
+  "description": "Web app that generates haiku ichi tasu (6-8-6) poems with the Claude API.",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.70.0",
+    "express": "^4.21.2"
+  }
+}
