@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Haiku Ichi Tasu — Poem Generator (standalone)</title>
+<style>
+  :root {
+    --bg: #f4efe6; --ink: #2b2520; --muted: #7c7166; --accent: #9a5b3f;
+    --accent-2: #38614f; --paper: #fbf8f2; --line: #e3d9c8; --shadow: rgba(60,45,30,.12);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1b1814; --ink: #ece3d5; --muted: #a89a88; --accent: #d08a6a;
+      --accent-2: #7fb79a; --paper: #241f1a; --line: #3a332b; --shadow: rgba(0,0,0,.4);
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, "Georgia", serif;
+    background: var(--bg); color: var(--ink); line-height: 1.5; min-height: 100vh;
+    display: flex; justify-content: center; padding: 2rem 1rem 4rem;
+  }
+  .wrap { width: 100%; max-width: 720px; }
+  header { text-align: center; margin-bottom: 1.75rem; }
+  h1 { font-size: clamp(1.8rem, 5vw, 2.6rem); margin: 0 0 .25rem; letter-spacing: .5px; font-weight: 600; }
+  .subtitle { color: var(--muted); font-style: italic; margin: 0; font-size: .98rem; }
+  .subtitle b { color: var(--accent-2); font-style: normal; }
+
+  .panel {
+    background: var(--paper); border: 1px solid var(--line); border-radius: 14px;
+    padding: 1.4rem 1.4rem 1.5rem; box-shadow: 0 8px 24px var(--shadow); margin-bottom: 1.2rem;
+  }
+  .field { margin-bottom: 1.1rem; }
+  label { display: block; font-size: .82rem; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted); margin-bottom: .4rem; }
+  input[type="text"], input[type="number"], input[type="password"] {
+    width: 100%; font-family: inherit; font-size: 1.05rem; padding: .7rem .85rem;
+    color: var(--ink); background: var(--bg); border: 1px solid var(--line);
+    border-radius: 9px; transition: border-color .15s, box-shadow .15s;
+  }
+  input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(154,91,63,.18); }
+
+  .row { display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end; }
+  .row .field { flex: 1 1 140px; margin-bottom: 0; }
+
+  details.keybox { border: 1px solid var(--line); border-radius: 12px; background: var(--paper); box-shadow: 0 8px 24px var(--shadow); margin-bottom: 1.2rem; }
+  details.keybox > summary {
+    cursor: pointer; padding: .9rem 1.2rem; font-size: .9rem; color: var(--accent);
+    list-style: none; font-weight: 600;
+  }
+  details.keybox > summary::-webkit-details-marker { display: none; }
+  details.keybox > summary::before { content: "⚙  "; }
+  details.keybox[open] > summary { border-bottom: 1px solid var(--line); }
+  .keybox .inner { padding: 1.1rem 1.2rem 1.3rem; }
+  .keybox .hint { font-size: .82rem; color: var(--muted); margin: .5rem 0 0; line-height: 1.45; }
+  .keybox .hint a { color: var(--accent); }
+  .key-row { display: flex; gap: .6rem; align-items: flex-end; }
+  .key-row .field { flex: 1; margin: 0; }
+  .keystatus { font-size: .8rem; margin-top: .5rem; }
+  .keystatus.ok { color: var(--accent-2); }
+  .keystatus.no { color: var(--muted); }
+
+  .toggle-field { display: flex; align-items: center; gap: .7rem; }
+  .toggle { position: relative; width: 52px; height: 30px; flex: none; background: var(--line);
+    border-radius: 999px; cursor: pointer; transition: background .2s; border: none; padding: 0; }
+  .toggle::after { content: ""; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px;
+    background: var(--paper); border-radius: 50%; transition: transform .2s; box-shadow: 0 1px 3px rgba(0,0,0,.25); }
+  .toggle[aria-pressed="true"] { background: var(--accent-2); }
+  .toggle[aria-pressed="true"]::after { transform: translateX(22px); }
+  .toggle-label { font-size: .95rem; }
+  .toggle-label small { display: block; color: var(--muted); font-size: .8rem; }
+
+  .actions { margin-top: 1.4rem; display: flex; gap: .8rem; flex-wrap: wrap; }
+  button.primary { font-family: inherit; font-size: 1.02rem; font-weight: 600; background: var(--accent);
+    color: #fff; border: none; padding: .75rem 1.5rem; border-radius: 9px; cursor: pointer;
+    transition: transform .08s, filter .15s; flex: 1 1 auto; }
+  button.primary:hover { filter: brightness(1.06); }
+  button.primary:active { transform: translateY(1px); }
+  button.primary:disabled { opacity: .6; cursor: default; filter: none; }
+  button.ghost { font-family: inherit; font-size: 1.02rem; background: transparent; color: var(--accent);
+    border: 1px solid var(--line); padding: .75rem 1.2rem; border-radius: 9px; cursor: pointer; }
+  button.ghost:hover { border-color: var(--accent); }
+  button.ghost:disabled { opacity: .5; cursor: default; }
+  button.mini { font-family: inherit; font-size: .9rem; background: transparent; color: var(--accent);
+    border: 1px solid var(--line); padding: .7rem .9rem; border-radius: 9px; cursor: pointer; white-space: nowrap; }
+
+  #output { margin-top: 1rem; }
+  .poem-title { text-align: center; font-size: 1.35rem; margin: 0 0 .3rem; color: var(--accent); font-weight: 600; }
+  .poem-meta { text-align: center; color: var(--muted); font-size: .85rem; margin-bottom: 1.6rem; font-style: italic; }
+  .triplet { text-align: center; margin: 0 auto 1.6rem; padding-bottom: 1.1rem; border-bottom: 1px solid var(--line);
+    max-width: 30rem; animation: rise .5s ease both; }
+  .triplet:last-child { border-bottom: none; }
+  .triplet .line { font-size: 1.24rem; letter-spacing: .2px; }
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+  .empty { text-align: center; color: var(--muted); font-style: italic; padding: 2rem 0; }
+  .error { text-align: center; color: #b3402c; padding: 1.5rem 0; }
+  @media (prefers-color-scheme: dark) { .error { color: #e0876f; } }
+  .loading { text-align: center; color: var(--muted); padding: 2.5rem 0; font-style: italic; }
+  .spinner { display: inline-block; width: 22px; height: 22px; margin-bottom: .6rem;
+    border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  footer { text-align: center; color: var(--muted); font-size: .8rem; margin-top: 2.5rem; }
+  .pattern-key { font-variant-numeric: tabular-nums; color: var(--accent-2); font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Haiku Ichi Tasu</h1>
+    <p class="subtitle">“haiku and one” — a <b>6&middot;8&middot;6</b> syllable triplet, one syllable more per line than a haiku</p>
+  </header>
+
+  <details class="keybox" id="keybox">
+    <summary id="keysummary">Anthropic API key</summary>
+    <div class="inner">
+      <div class="key-row">
+        <div class="field">
+          <label for="apikey">Your key (starts with sk-ant-…)</label>
+          <input type="password" id="apikey" placeholder="sk-ant-..." autocomplete="off" spellcheck="false" />
+        </div>
+        <button class="mini" id="savekey">Save</button>
+        <button class="mini" id="clearkey">Clear</button>
+      </div>
+      <div class="keystatus no" id="keystatus">No key saved yet.</div>
+      <p class="hint">
+        Get a key at <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com/settings/keys</a>
+        (you'll also need a little credit under Billing). The key is stored only in this browser
+        (localStorage) and is sent directly to Anthropic — it never goes anywhere else. Use this on your
+        own machine; don't share this file with your key saved in it.
+      </p>
+    </div>
+  </details>
+
+  <div class="panel">
+    <div class="field">
+      <label for="theme">Theme</label>
+      <input type="text" id="theme" placeholder="e.g. the quiet sea, winter, love, midnight" value="the quiet sea" autocomplete="off" />
+    </div>
+    <div class="row">
+      <div class="field">
+        <label for="count">Number of triplets</label>
+        <input type="number" id="count" min="1" max="20" value="3" />
+      </div>
+      <div class="field toggle-field">
+        <button class="toggle" id="rhyme" aria-pressed="false" aria-label="Toggle rhyme"></button>
+        <span class="toggle-label">Rhyme<small>lines 1 &amp; 3 chime</small></span>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="primary" id="generate">Compose</button>
+      <button class="ghost" id="copy" disabled>Copy</button>
+    </div>
+  </div>
+
+  <div id="output">
+    <p class="empty">Add your API key above, enter a theme, and press <b>Compose</b>.</p>
+  </div>
+
+  <footer>
+    Syllable pattern <span class="pattern-key">6&middot;8&middot;6</span> &middot; a coherent, single-theme sequence, written by Claude Haiku 4.5.
+  </footer>
+</div>
+
+<script>
+"use strict";
+
+const KEY_STORAGE = "haiku_ichi_tasu_api_key";
+const MODEL = "claude-haiku-4-5";
+
+const els = {
+  keybox: document.getElementById("keybox"),
+  keysummary: document.getElementById("keysummary"),
+  apikey: document.getElementById("apikey"),
+  savekey: document.getElementById("savekey"),
+  clearkey: document.getElementById("clearkey"),
+  keystatus: document.getElementById("keystatus"),
+  theme: document.getElementById("theme"),
+  count: document.getElementById("count"),
+  rhyme: document.getElementById("rhyme"),
+  generate: document.getElementById("generate"),
+  copy: document.getElementById("copy"),
+  output: document.getElementById("output"),
+};
+
+let lastPoem = null;
+
+// ---- API key handling (localStorage) --------------------------------
+function loadKey() { return localStorage.getItem(KEY_STORAGE) || ""; }
+function reflectKeyState() {
+  const key = loadKey();
+  if (key) {
+    els.keystatus.textContent = "Key saved in this browser (…" + key.slice(-4) + ").";
+    els.keystatus.className = "keystatus ok";
+    els.keysummary.textContent = "Anthropic API key ✓";
+  } else {
+    els.keystatus.textContent = "No key saved yet.";
+    els.keystatus.className = "keystatus no";
+    els.keysummary.textContent = "Anthropic API key";
+  }
+}
+els.savekey.addEventListener("click", () => {
+  const key = els.apikey.value.trim();
+  if (!key) { localStorage.removeItem(KEY_STORAGE); }
+  else { localStorage.setItem(KEY_STORAGE, key); }
+  els.apikey.value = "";
+  reflectKeyState();
+});
+els.clearkey.addEventListener("click", () => {
+  localStorage.removeItem(KEY_STORAGE);
+  els.apikey.value = "";
+  reflectKeyState();
+});
+
+els.rhyme.addEventListener("click", () => {
+  const on = els.rhyme.getAttribute("aria-pressed") === "true";
+  els.rhyme.setAttribute("aria-pressed", String(!on));
+});
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+function setBusy(b) { els.generate.disabled = b; els.generate.textContent = b ? "Composing…" : "Compose"; }
+function renderLoading() {
+  els.output.innerHTML = '<div class="loading"><div class="spinner"></div><div>Composing your poem…</div></div>';
+}
+function renderError(m) { els.output.innerHTML = '<p class="error">' + escapeHtml(m) + "</p>"; }
+
+function render(poem, rhyme) {
+  const triplets = Array.isArray(poem.triplets) ? poem.triplets : [];
+  const parts = [];
+  if (poem.title) parts.push('<h2 class="poem-title">' + escapeHtml(poem.title) + "</h2>");
+  parts.push('<p class="poem-meta">' + triplets.length + " triplet" + (triplets.length === 1 ? "" : "s") +
+    " &middot; 6&middot;8&middot;6 &middot; " + (rhyme ? "rhymed" : "unrhymed") + "</p>");
+  for (const tri of triplets) {
+    const lines = (tri.lines || []).map((l) => '<div class="line">' + escapeHtml(l) + "</div>").join("");
+    parts.push('<div class="triplet">' + lines + "</div>");
+  }
+  els.output.innerHTML = parts.join("");
+  els.copy.disabled = false;
+}
+function poemToText(poem) {
+  const out = [];
+  if (poem.title) out.push(poem.title, "");
+  for (const tri of poem.triplets || []) { for (const l of tri.lines || []) out.push(l); out.push(""); }
+  return out.join("\n").trim() + "\n";
+}
+
+const POEM_SCHEMA = {
+  type: "object",
+  properties: {
+    title: { type: "string" },
+    triplets: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: { lines: { type: "array", items: { type: "string" } } },
+        required: ["lines"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["title", "triplets"],
+  additionalProperties: false,
+};
+
+const SYSTEM_PROMPT = `You are a poet who writes in the "haiku ichi tasu" form.
+
+"Haiku ichi tasu" means "haiku and one": it is a haiku with exactly one extra
+syllable on every line, giving each triplet a strict 6-8-6 syllable pattern
+(line 1 = 6 syllables, line 2 = 8 syllables, line 3 = 6 syllables).
+
+Rules you MUST follow:
+- Count syllables carefully. Every triplet is exactly 6, 8, 6 syllables.
+- The poem is a single coherent work: one consistent theme, imagery, mood, and
+  through-line developing across ALL triplets in sequence — not a set of
+  unrelated haiku that merely share a topic. Later triplets should build on,
+  deepen, or turn from earlier ones.
+- Write evocative, concrete, image-driven poetry. Avoid cliché.
+- When rhyme is requested, lines 1 and 3 of each triplet (the two 6-syllable
+  lines) must rhyme with each other. Line 2 is free.
+- Do not add commentary. Return only the poem via the structured format.`;
+
+async function generate() {
+  const key = loadKey();
+  if (!key) {
+    renderError("Add your Anthropic API key first (the ⚙ section at the top).");
+    els.keybox.open = true;
+    return;
+  }
+  const theme = els.theme.value.trim();
+  if (!theme) { renderError("Please enter a theme."); return; }
+  let count = parseInt(els.count.value, 10);
+  if (isNaN(count) || count < 1) count = 1;
+  if (count > 20) count = 20;
+  els.count.value = count;
+  const rhyme = els.rhyme.getAttribute("aria-pressed") === "true";
+
+  const userPrompt =
+    "Theme: " + theme + "\n" +
+    "Number of triplets: " + count + "\n" +
+    "Rhyme: " + (rhyme ? "on — lines 1 and 3 of each triplet rhyme" : "off") + "\n\n" +
+    "Write a haiku ichi tasu of exactly " + count + " triplet" + (count === 1 ? "" : "s") +
+    " in the 6-8-6 pattern, carrying one coherent theme and through-line across all of them.";
+
+  lastPoem = null;
+  els.copy.disabled = true;
+  setBusy(true);
+  renderLoading();
+
+  try {
+    const resp = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-api-key": key,
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true",
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        max_tokens: 8000,
+        thinking: { type: "enabled", budget_tokens: 2000 },
+        system: SYSTEM_PROMPT,
+        messages: [{ role: "user", content: userPrompt }],
+        output_config: { format: { type: "json_schema", schema: POEM_SCHEMA } },
+      }),
+    });
+
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      const msg = (data && data.error && data.error.message) || ("Request failed (" + resp.status + ").");
+      if (resp.status === 401) throw new Error("Invalid API key. Check the key in the ⚙ section.");
+      if (resp.status === 429) throw new Error("Rate limited by Anthropic. Try again shortly.");
+      if (resp.status === 400 && /credit balance/i.test(msg))
+        throw new Error("Your Anthropic account needs credit — add some under Billing in the Console.");
+      throw new Error(msg);
+    }
+
+    const textBlock = (data.content || []).find((b) => b.type === "text");
+    if (!textBlock) throw new Error("The model returned no poem. Try again.");
+    const poem = JSON.parse(textBlock.text);
+    lastPoem = poem;
+    render(poem, rhyme);
+  } catch (err) {
+    // A network/CORS failure surfaces as a TypeError with no response.
+    if (err instanceof TypeError) {
+      renderError("Couldn't reach the Anthropic API from the browser. If you opened this file " +
+        "directly, some browsers block the request — try serving the folder locally " +
+        "(e.g. run: python3 -m http.server) and open it via http://localhost:8000/standalone.html");
+    } else {
+      renderError(err.message || "Something went wrong.");
+    }
+  } finally {
+    setBusy(false);
+  }
+}
+
+els.generate.addEventListener("click", generate);
+els.theme.addEventListener("keydown", (e) => { if (e.key === "Enter") generate(); });
+els.count.addEventListener("keydown", (e) => { if (e.key === "Enter") generate(); });
+els.apikey.addEventListener("keydown", (e) => { if (e.key === "Enter") els.savekey.click(); });
+
+els.copy.addEventListener("click", async () => {
+  if (!lastPoem) return;
+  try {
+    await navigator.clipboard.writeText(poemToText(lastPoem));
+    els.copy.textContent = "Copied!";
+    setTimeout(() => (els.copy.textContent = "Copy"), 1200);
+  } catch (e) {
+    els.copy.textContent = "Copy failed";
+    setTimeout(() => (els.copy.textContent = "Copy"), 1200);
+  }
+});
+
+// init
+reflectKeyState();
+if (!loadKey()) els.keybox.open = true;
+</script>
+</body>
+</html>
