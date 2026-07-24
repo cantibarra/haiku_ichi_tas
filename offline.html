@@ -432,6 +432,9 @@ let lastPoem = null;
 els.rhyme.addEventListener("click", () => {
   const on = els.rhyme.getAttribute("aria-pressed") === "true";
   els.rhyme.setAttribute("aria-pressed", String(!on));
+  // Re-compose immediately so flipping the toggle visibly changes the poem
+  // (this generator is free and instant, so there's no cost to regenerating).
+  if (lastPoem) els.generate.click();
 });
 
 function render(poem, themeInput) {
