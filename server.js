@@ -78,9 +78,11 @@ app.post("/api/generate", async (req, res) => {
 
   try {
     const response = await client.messages.create({
-      model: "claude-opus-4-8",
+      model: "claude-haiku-4-5",
       max_tokens: 8000,
-      thinking: { type: "adaptive" }, // helps the model count syllables accurately
+      // Haiku 4.5 uses a fixed thinking budget (not adaptive); the budget helps
+      // it count syllables. Must be < max_tokens.
+      thinking: { type: "enabled", budget_tokens: 2000 },
       system: SYSTEM_PROMPT,
       messages: [{ role: "user", content: userPrompt }],
       output_config: {

@@ -47,5 +47,7 @@ Press **Compose** to generate, **Copy** to put the poem on your clipboard.
 
 - The API key is read from the environment on the server side and is never
   exposed to the client. Don't commit `.env` (it's gitignored).
-- Model: `claude-opus-4-8`. Change it in `server.js` if you prefer another
-  Claude model.
+- Model: `claude-haiku-4-5` (fast and low-cost — typically under a cent per
+  poem). Change it in `server.js` if you prefer a more capable Claude model
+  such as `claude-opus-4-8`; note that Opus/Sonnet 4.6+ use adaptive thinking
+  (`thinking: { type: "adaptive" }`) rather than Haiku's fixed `budget_tokens`.
