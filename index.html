@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Haiku Ichi Tasu — Poem Generator</title>
+<style>
+  :root {
+    --bg: #f4efe6;
+    --ink: #2b2520;
+    --muted: #7c7166;
+    --accent: #9a5b3f;
+    --accent-2: #38614f;
+    --paper: #fbf8f2;
+    --line: #e3d9c8;
+    --shadow: rgba(60, 45, 30, 0.12);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1b1814;
+      --ink: #ece3d5;
+      --muted: #a89a88;
+      --accent: #d08a6a;
+      --accent-2: #7fb79a;
+      --paper: #241f1a;
+      --line: #3a332b;
+      --shadow: rgba(0, 0, 0, 0.4);
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, "Georgia", serif;
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.5;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 2rem 1rem 4rem;
+  }
+  .wrap { width: 100%; max-width: 720px; }
+  header { text-align: center; margin-bottom: 1.75rem; }
+  h1 {
+    font-size: clamp(1.8rem, 5vw, 2.6rem);
+    margin: 0 0 0.25rem;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+  }
+  .subtitle { color: var(--muted); font-style: italic; margin: 0; font-size: 0.98rem; }
+  .subtitle b { color: var(--accent-2); font-style: normal; }
+
+  .panel {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 1.4rem 1.4rem 1.5rem;
+    box-shadow: 0 8px 24px var(--shadow);
+  }
+  .field { margin-bottom: 1.1rem; }
+  label { display: block; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted); margin-bottom: 0.4rem; }
+  input[type="text"], input[type="number"] {
+    width: 100%;
+    font-family: inherit;
+    font-size: 1.05rem;
+    padding: 0.7rem 0.85rem;
+    color: var(--ink);
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(154, 91, 63, 0.18); }
+
+  .row { display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end; }
+  .row .field { flex: 1 1 140px; margin-bottom: 0; }
+
+  /* toggle */
+  .toggle-field { display: flex; align-items: center; gap: 0.7rem; }
+  .toggle {
+    position: relative; width: 52px; height: 30px; flex: none;
+    background: var(--line); border-radius: 999px; cursor: pointer;
+    transition: background 0.2s; border: none; padding: 0;
+  }
+  .toggle::after {
+    content: ""; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px;
+    background: var(--paper); border-radius: 50%; transition: transform 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+  }
+  .toggle[aria-pressed="true"] { background: var(--accent-2); }
+  .toggle[aria-pressed="true"]::after { transform: translateX(22px); }
+  .toggle-label { font-size: 0.95rem; }
+  .toggle-label small { display: block; color: var(--muted); font-size: 0.8rem; }
+
+  .actions { margin-top: 1.4rem; display: flex; gap: 0.8rem; flex-wrap: wrap; }
+  button.primary {
+    font-family: inherit; font-size: 1.02rem; font-weight: 600;
+    background: var(--accent); color: #fff; border: none;
+    padding: 0.75rem 1.5rem; border-radius: 9px; cursor: pointer;
+    transition: transform 0.08s, filter 0.15s; flex: 1 1 auto;
+  }
+  button.primary:hover { filter: brightness(1.06); }
+  button.primary:active { transform: translateY(1px); }
+  button.ghost {
+    font-family: inherit; font-size: 1.02rem;
+    background: transparent; color: var(--accent); border: 1px solid var(--line);
+    padding: 0.75rem 1.2rem; border-radius: 9px; cursor: pointer;
+  }
+  button.ghost:hover { border-color: var(--accent); }
+
+  #output { margin-top: 2rem; }
+  .poem-title {
+    text-align: center; font-size: 1.35rem; margin: 0 0 0.3rem;
+    color: var(--accent); font-weight: 600;
+  }
+  .poem-meta { text-align: center; color: var(--muted); font-size: 0.85rem; margin-bottom: 1.6rem; font-style: italic; }
+  .triplet {
+    text-align: center; margin: 0 auto 1.6rem; padding-bottom: 1.1rem;
+    border-bottom: 1px solid var(--line); max-width: 30rem;
+    animation: rise 0.5s ease both;
+  }
+  .triplet:last-child { border-bottom: none; }
+  .triplet .line { font-size: 1.24rem; letter-spacing: 0.2px; }
+  .triplet .line .count { color: var(--muted); font-size: 0.72rem; margin-left: 0.5rem; opacity: 0; transition: opacity 0.15s; }
+  .triplet:hover .line .count { opacity: 0.7; }
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+  .empty { text-align: center; color: var(--muted); font-style: italic; padding: 2rem 0; }
+  footer { text-align: center; color: var(--muted); font-size: 0.8rem; margin-top: 2.5rem; }
+  .pattern-key { font-variant-numeric: tabular-nums; color: var(--accent-2); font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Haiku Ichi Tasu</h1>
+    <p class="subtitle">“haiku and one” — a <b>6&middot;8&middot;6</b> syllable triplet, one syllable more per line than a haiku</p>
+  </header>
+
+  <div class="panel">
+    <div class="field">
+      <label for="theme">Theme</label>
+      <input type="text" id="theme" placeholder="e.g. the quiet sea, winter, love, midnight" value="the quiet sea" autocomplete="off" />
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label for="count">Number of triplets</label>
+        <input type="number" id="count" min="1" max="20" value="3" />
+      </div>
+      <div class="field toggle-field">
+        <button class="toggle" id="rhyme" aria-pressed="false" aria-label="Toggle rhyme"></button>
+        <span class="toggle-label">Rhyme<small>lines 1 &amp; 3 chime</small></span>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="primary" id="generate">Compose</button>
+      <button class="ghost" id="copy">Copy</button>
+    </div>
+  </div>
+
+  <div id="output">
+    <p class="empty">Enter a theme and press <b>Compose</b>.</p>
+  </div>
+
+  <footer>
+    Syllable pattern <span class="pattern-key">6&middot;8&middot;6</span> &middot; repeated as a coherent, single-theme sequence.
+  </footer>
+</div>
+
+<script>
+"use strict";
+
+/* ------------------------------------------------------------------ *
+ *  Haiku Ichi Tasu generator
+ *  - Lines are built from a themed word bank by exact syllable count.
+ *  - Every word is pre-tagged with its syllable count; a small
+ *    backtracking filler assembles grammatical templates that sum to
+ *    the target (6 or 8) syllables.
+ *  - Rhyme mode constrains lines 1 & 3 (both 6 syllables) to share an
+ *    ending sound.
+ * ------------------------------------------------------------------ */
+
+// Derive a spelling-based rhyme key: last vowel-group through the end.
+function rhymeKey(word) {
+  const m = word.toLowerCase().match(/[aeiouy]+[^aeiouy]*$/);
+  return m ? m[0] : word.toLowerCase();
+}
+
+// w(word, syllables) -> tagged word object
+function w(word, s) { return { t: word, s: s, r: rhymeKey(word) }; }
+
+// ---- Shared function words (theme-neutral) --------------------------
+const COMMON = {
+  det:  ["the", "a", "one", "my", "your", "no", "this", "some", "each", "that"].map(x => w(x, x === "every" ? 3 : 1)),
+  prep: ["in", "on", "by", "through", "past", "near", "at", "to",
+         "under", "over", "beyond", "beneath", "within", "across", "against", "among", "before", "above"]
+         .map(x => w(x, x.length <= 4 && !/under|over|among/.test(x) ? 1 : 2)),
+  conj: ["and", "or", "yet", "as", "while", "till"].map(x => w(x, 1)),
+  adv:  [w("softly",2), w("slowly",2), w("gently",2), w("still",1), w("now",1), w("here",1),
+         w("again",2), w("away",2), w("alone",2), w("once",1)]
+};
+// fix syllable edge cases in prep list
+COMMON.prep = [w("in",1),w("on",1),w("by",1),w("through",1),w("past",1),w("near",1),w("at",1),w("to",1),
+  w("under",2),w("over",2),w("beyond",2),w("beneath",2),w("within",2),w("across",2),
+  w("against",2),w("among",2),w("before",2),w("above",2)];
+
+// ---- Theme banks ----------------------------------------------------
+const THEMES = {
+  nature: {
+    label: "the wild green",
+    noun: [w("forest",2),w("river",2),w("meadow",2),w("mountain",2),w("willow",2),w("blossom",2),
+      w("shadow",2),w("petal",2),w("garden",2),w("thicket",2),w("maple",2),w("ember",2),
+      w("sparrow",2),w("morning",2),w("moss",1),w("fern",1),w("leaf",1),w("stone",1),
+      w("root",1),w("branch",1),w("field",1),w("hill",1),w("dawn",1),w("breeze",1),
+      w("stream",1),w("oak",1),w("pine",1),w("thorn",1),w("dew",1),w("wildflower",3),w("butterfly",3)],
+    adj: [w("quiet",2),w("gentle",2),w("golden",2),w("silent",2),w("tender",2),w("ancient",2),
+      w("hollow",2),w("fragile",2),w("verdant",2),w("amber",2),w("wild",1),w("green",1),
+      w("pale",1),w("soft",1),w("deep",1),w("lush",1),w("still",1),w("luminous",3),w("emerald",3)],
+    verb: [w("whispers",2),w("scatters",2),w("gathers",2),w("trembles",2),w("blossoms",2),w("lingers",2),
+      w("wanders",2),w("murmurs",2),w("rustles",2),w("softens",2),w("drifts",1),w("falls",1),
+      w("sways",1),w("grows",1),w("bends",1),w("breathes",1),w("curls",1),w("glows",1),w("sighs",1),w("stirs",1)]
+  },
+  sea: {
+    label: "the open sea",
+    noun: [w("ocean",2),w("water",2),w("harbor",2),w("current",2),w("tempest",2),w("driftwood",2),
+      w("seagull",2),w("pebble",2),w("shoreline",2),w("shallows",2),w("island",2),w("saltwater",3),
+      w("wave",1),w("tide",1),w("shore",1),w("foam",1),w("salt",1),w("shell",1),w("sail",1),
+      w("brine",1),w("wind",1),w("gull",1),w("depth",1),w("reef",1),w("horizon",3),w("undertow",3)],
+    adj: [w("restless",2),w("distant",2),w("endless",2),w("hollow",2),w("silver",2),w("bitter",2),
+      w("shallow",2),w("frozen",2),w("misty",2),w("vast",1),w("grey",1),w("deep",1),w("cold",1),
+      w("wide",1),w("dark",1),w("pale",1),w("fathomless",3)],
+    verb: [w("crashes",2),w("gathers",2),w("carries",2),w("shatters",2),w("swallows",2),w("beckons",2),
+      w("rises",2),w("scatters",2),w("lingers",2),w("breaks",1),w("swells",1),w("rolls",1),
+      w("drifts",1),w("pulls",1),w("foams",1),w("churns",1),w("calls",1),w("fades",1),w("turns",1)]
+  },
+  love: {
+    label: "the aching heart",
+    noun: [w("longing",2),w("ember",2),w("whisper",2),w("shadow",2),w("promise",2),w("secret",2),
+      w("fever",2),w("hunger",2),w("silence",2),w("summer",2),w("letter",2),w("heartbeat",2),
+      w("heart",1),w("kiss",1),w("touch",1),w("flame",1),w("grief",1),w("hope",1),w("breath",1),
+      w("warmth",1),w("ache",1),w("dream",1),w("devotion",3),w("desire",3),w("memory",3)],
+    adj: [w("tender",2),w("aching",2),w("fragile",2),w("burning",2),w("restless",2),w("distant",2),
+      w("quiet",2),w("fleeting",2),w("gentle",2),w("sweet",1),w("warm",1),w("close",1),w("lost",1),
+      w("true",1),w("deep",1),w("bright",1),w("unspoken",3)],
+    verb: [w("aches",1),w("burns",1),w("yearns",1),w("clings",1),w("melts",1),w("stays",1),
+      w("trembles",2),w("lingers",2),w("whispers",2),w("remembers",3),w("surrenders",3),
+      w("softens",2),w("beckons",2),w("wavers",2),w("fades",1),w("holds",1),w("waits",1)]
+  },
+  night: {
+    label: "the dreaming dark",
+    noun: [w("moonlight",2),w("shadow",2),w("silence",2),w("ember",2),w("lantern",2),w("candle",2),
+      w("comet",2),w("planet",2),w("midnight",2),w("stardust",2),w("twilight",2),w("moth",1),
+      w("moon",1),w("star",1),w("dusk",1),w("dark",1),w("dream",1),w("sleep",1),w("night",1),
+      w("void",1),w("veil",1),w("owl",1),w("galaxy",3),w("horizon",3),w("memory",3)],
+    adj: [w("silent",2),w("distant",2),w("velvet",2),w("hollow",2),w("dreaming",2),w("drifting",2),
+      w("silver",2),w("endless",2),w("frozen",2),w("dark",1),w("deep",1),w("pale",1),w("still",1),
+      w("cold",1),w("dim",1),w("vast",1),w("luminous",3),w("infinite",3)],
+    verb: [w("glimmers",2),w("shimmers",2),w("whispers",2),w("gathers",2),w("scatters",2),w("drifts",1),
+      w("fades",1),w("falls",1),w("dreams",1),w("glows",1),w("sinks",1),w("wanes",1),
+      w("lingers",2),w("dissolves",2),w("hovers",2),w("beckons",2),w("descends",2)]
+  },
+  winter: {
+    label: "the pale cold",
+    noun: [w("winter",2),w("snowfall",2),w("shadow",2),w("silence",2),w("frostwork",2),w("cinder",2),
+      w("ember",2),w("shiver",2),w("hollow",2),w("mountain",2),w("blanket",2),w("snow",1),
+      w("frost",1),w("ice",1),w("chill",1),w("breath",1),w("pine",1),w("hearth",1),w("glass",1),
+      w("stone",1),w("wind",1),w("dusk",1),w("solitude",3),w("evergreen",3),w("memory",3)],
+    adj: [w("frozen",2),w("silent",2),w("brittle",2),w("bitter",2),w("hollow",2),w("distant",2),
+      w("silver",2),w("barren",2),w("fragile",2),w("cold",1),w("pale",1),w("grey",1),w("bare",1),
+      w("sharp",1),w("still",1),w("white",1),w("desolate",3)],
+    verb: [w("settles",2),w("gathers",2),w("whitens",2),w("shivers",2),w("lingers",2),w("softens",2),
+      w("scatters",2),w("freezes",2),w("falls",1),w("drifts",1),w("clings",1),w("fades",1),
+      w("stills",1),w("numbs",1),w("hushes",2),w("blankets",2),w("crystallizes",4)]
+  }
+};
+
+// keyword -> theme
+const KEYWORDS = [
+  [/\b(sea|ocean|wave|tide|water|beach|shore|salt|sail|coast|harbor|marine)\b/i, "sea"],
+  [/\b(love|heart|kiss|desire|romance|beloved|passion|longing|lover)\b/i, "love"],
+  [/\b(night|star|moon|dark|dream|sleep|midnight|dusk|shadow|cosmos|galaxy)\b/i, "night"],
+  [/\b(winter|snow|cold|ice|frost|december|freeze|chill|blizzard)\b/i, "winter"]
+];
+
+function chooseTheme(input) {
+  for (const [re, key] of KEYWORDS) if (re.test(input)) return key;
+  return "nature";
+}
+
+// ---- Templates: POS sequences, tagged by ending POS -----------------
+// end === "noun" templates are used for rhyming line endings.
+const T6 = [
+  { seq: ["det","adj","noun","verb"], end: "verb" },
+  { seq: ["adj","noun","verb","adv"], end: "adv" },
+  { seq: ["noun","verb","prep","det","noun"], end: "noun" },
+  { seq: ["adj","noun","prep","noun"], end: "noun" },
+  { seq: ["det","noun","verb","prep","noun"], end: "noun" },
+  { seq: ["verb","prep","det","adj","noun"], end: "noun" },
+  { seq: ["adj","adj","noun","verb"], end: "verb" }
+];
+const T8 = [
+  { seq: ["det","adj","noun","verb","prep","noun"], end: "noun" },
+  { seq: ["adj","noun","verb","prep","det","adj","noun"], end: "noun" },
+  { seq: ["prep","det","adj","noun","det","noun","verb"], end: "verb" },
+  { seq: ["det","noun","verb","conj","adj","noun","verb"], end: "verb" },
+  { seq: ["adj","noun","prep","det","adj","noun"], end: "noun" },
+  { seq: ["det","adj","noun","conj","adj","noun"], end: "noun" }
+];
+
+function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function rand(a) { return a[Math.floor(Math.random() * a.length)]; }
+
+// Fill a template so its words sum exactly to `target` syllables.
+// endKey: optional rhyme key required on the final word.
+// exclude: optional word text to avoid on the final word.
+function fillTemplate(tpl, target, bank, endKey, exclude) {
+  const lists = tpl.seq.map(pos => bank[pos] || COMMON[pos]);
+  const n = lists.length;
+  const sMin = new Array(n + 1).fill(0), sMax = new Array(n + 1).fill(0);
+  for (let i = n - 1; i >= 0; i--) {
+    let lo = Infinity, hi = -Infinity;
+    for (const x of lists[i]) { if (x.s < lo) lo = x.s; if (x.s > hi) hi = x.s; }
+    sMin[i] = sMin[i + 1] + lo;
+    sMax[i] = sMax[i + 1] + hi;
+  }
+  function rec(i, remaining) {
+    if (i === n) return remaining === 0 ? [] : null;
+    let cand = lists[i].slice();
+    if (i === n - 1) {
+      if (endKey) cand = cand.filter(x => x.r === endKey);
+      if (exclude) cand = cand.filter(x => x.t !== exclude);
+      if (!cand.length) return null;
+    }
+    shuffle(cand);
+    for (const x of cand) {
+      const rem = remaining - x.s;
+      if (rem < sMin[i + 1] || rem > sMax[i + 1]) continue;
+      const rest = rec(i + 1, rem);
+      if (rest) return [x, ...rest];
+    }
+    return null;
+  }
+  return rec(0, target);
+}
+
+// Build one 6- or 8-syllable line. Returns {text, words} or null.
+function makeLine(target, bank, opts) {
+  opts = opts || {};
+  const templates = shuffle((target === 6 ? T6 : T8).slice());
+  for (const tpl of templates) {
+    if (opts.needNounEnd && tpl.end !== "noun") continue;
+    const words = fillTemplate(tpl, target, bank, opts.endKey, opts.exclude);
+    if (words) return { text: words.map(x => x.t).join(" "), words, endWord: words[words.length - 1] };
+  }
+  // Fallback: try any template ignoring the noun-end requirement.
+  for (const tpl of shuffle((target === 6 ? T6 : T8).slice())) {
+    const words = fillTemplate(tpl, target, bank, opts.endKey, opts.exclude);
+    if (words) return { text: words.map(x => x.t).join(" "), words, endWord: words[words.length - 1] };
+  }
+  return null;
+}
+
+function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+// Rhyme keys shared by >= 2 *distinct* nouns in the bank, shuffled.
+function rhymeKeyCandidates(bank) {
+  const byKey = {};
+  for (const nn of bank.noun) {
+    const set = (byKey[nn.r] = byKey[nn.r] || new Set());
+    set.add(nn.t);
+  }
+  return shuffle(Object.keys(byKey).filter(k => byKey[k].size >= 2));
+}
+
+// Build a per-poem bank with a few "anchor" nouns weighted up for cohesion.
+function cohesiveBank(themeKey) {
+  const base = THEMES[themeKey];
+  const anchors = shuffle(base.noun.slice()).slice(0, 3);
+  const nouns = base.noun.slice();
+  for (const a of anchors) { nouns.push(a); nouns.push(a); } // triple weight
+  return { noun: nouns, adj: base.adj.slice(), verb: base.verb.slice() };
+}
+
+function generatePoem(themeInput, tripletCount, rhyme) {
+  const themeKey = chooseTheme(themeInput);
+  const poem = [];
+  for (let t = 0; t < tripletCount; t++) {
+    const bank = cohesiveBank(themeKey);
+    let l1, l2, l3;
+    if (rhyme) {
+      l2 = makeLine(8, bank, {});
+      // Try each candidate rhyme key until we get two 6-syllable lines
+      // that end on *distinct* words sharing that key.
+      for (const key of rhymeKeyCandidates(bank)) {
+        const a = makeLine(6, bank, { needNounEnd: true, endKey: key });
+        if (!a) continue;
+        const b = makeLine(6, bank, { needNounEnd: true, endKey: key, exclude: a.endWord.t });
+        if (!b) continue;
+        l1 = a; l3 = b; break;
+      }
+      // Fallbacks if no clean rhyme pair was found.
+      if (!l1) l1 = makeLine(6, bank, {});
+      if (!l3) l3 = makeLine(6, bank, { endKey: l1.endWord ? l1.endWord.r : null, exclude: l1.endWord ? l1.endWord.t : null })
+                    || makeLine(6, bank, {});
+    } else {
+      l1 = makeLine(6, bank, {});
+      l2 = makeLine(8, bank, {});
+      l3 = makeLine(6, bank, {});
+    }
+    poem.push([l1, l2, l3]);
+  }
+  return { themeKey, label: THEMES[themeKey].label, triplets: poem };
+}
+
+// ---- Syllable display (for the hover count) -------------------------
+function lineSyllables(line) { return line.words.reduce((n, x) => n + x.s, 0); }
+
+// ---- UI -------------------------------------------------------------
+const els = {
+  theme: document.getElementById("theme"),
+  count: document.getElementById("count"),
+  rhyme: document.getElementById("rhyme"),
+  generate: document.getElementById("generate"),
+  copy: document.getElementById("copy"),
+  output: document.getElementById("output")
+};
+
+let lastPoem = null;
+
+els.rhyme.addEventListener("click", () => {
+  const on = els.rhyme.getAttribute("aria-pressed") === "true";
+  els.rhyme.setAttribute("aria-pressed", String(!on));
+  // Re-compose immediately so flipping the toggle visibly changes the poem
+  // (this generator is free and instant, so there's no cost to regenerating).
+  if (lastPoem) els.generate.click();
+});
+
+function render(poem, themeInput) {
+  const parts = [];
+  const displayTheme = themeInput.trim() || poem.label;
+  parts.push(`<h2 class="poem-title">${escapeHtml(cap(displayTheme))}</h2>`);
+  parts.push(`<p class="poem-meta">${poem.triplets.length} triplet${poem.triplets.length > 1 ? "s" : ""} &middot; 6&middot;8&middot;6 &middot; ${els.rhyme.getAttribute("aria-pressed") === "true" ? "rhymed" : "unrhymed"}</p>`);
+  for (const tri of poem.triplets) {
+    const lines = tri.map(l => {
+      const c = lineSyllables(l);
+      return `<div class="line">${escapeHtml(cap(l.text))}<span class="count">${c}</span></div>`;
+    }).join("");
+    parts.push(`<div class="triplet">${lines}</div>`);
+  }
+  els.output.innerHTML = parts.join("");
+}
+
+function escapeHtml(s) { return s.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+
+function poemToText(poem, themeInput) {
+  const out = [];
+  out.push(cap(themeInput.trim() || poem.label));
+  out.push("");
+  for (const tri of poem.triplets) {
+    for (const l of tri) out.push(cap(l.text));
+    out.push("");
+  }
+  return out.join("\n").trim() + "\n";
+}
+
+els.generate.addEventListener("click", () => {
+  const themeInput = els.theme.value;
+  let count = parseInt(els.count.value, 10);
+  if (isNaN(count) || count < 1) count = 1;
+  if (count > 20) count = 20;
+  els.count.value = count;
+  const rhyme = els.rhyme.getAttribute("aria-pressed") === "true";
+  lastPoem = generatePoem(themeInput, count, rhyme);
+  render(lastPoem, themeInput);
+});
+
+els.copy.addEventListener("click", async () => {
+  if (!lastPoem) return;
+  const text = poemToText(lastPoem, els.theme.value);
+  try {
+    await navigator.clipboard.writeText(text);
+    els.copy.textContent = "Copied!";
+    setTimeout(() => (els.copy.textContent = "Copy"), 1200);
+  } catch (e) {
+    els.copy.textContent = "Copy failed";
+    setTimeout(() => (els.copy.textContent = "Copy"), 1200);
+  }
+});
+
+els.theme.addEventListener("keydown", e => { if (e.key === "Enter") els.generate.click(); });
+els.count.addEventListener("keydown", e => { if (e.key === "Enter") els.generate.click(); });
+
+// Compose one on load so the page isn't empty.
+window.addEventListener("DOMContentLoaded", () => els.generate.click());
+</script>
+</body>
+</html>
